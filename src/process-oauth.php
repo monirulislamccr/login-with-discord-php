@@ -3,6 +3,8 @@ ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
+
+
 if(!isset($_GET['code'])){
     echo 'no code';
     exit();
@@ -13,10 +15,10 @@ $discord_code = $_GET['code'];
 
 $payload = [
     'code'=>$discord_code,
-    'client_id'=>'YOUR_CLIENT_ID_GOES_HERE',
-    'client_secret'=>'YOUR_CLIENT_SECRET_GOES_HERE',
+    'client_id'=>'1171393378571800586',
+    'client_secret'=>'0gILGawqaBaMqauC5o3HIbgcV2odrjfB',
     'grant_type'=>'authorization_code',
-    'redirect_uri'=>'http://localhost/PROJECT_DIRECTORY/src/process-oauth.php',
+    'redirect_uri'=>'https://localhost/practice/login-with-discord-php/src/process-oauth.php',
     'scope'=>'identify%20guids',
 ];
 
@@ -59,7 +61,10 @@ curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
 $result = curl_exec($ch);
 
 $result = json_decode($result, true);
+//  also add the user to a guild
 
+$guild_ID = '1171377706785570849';
+$addUserToGuild = addUserToGuild($result['id'],$access_token,$guild_ID);
 
 session_start();
 
@@ -68,7 +73,58 @@ $_SESSION['userData'] = [
     'name'=>$result['username'],
     'discord_id'=>$result['id'],
     'avatar'=>$result['avatar'],
+    'guilds'=>getUsersGuilds($access_token)
 ];
+
 
 header("location: dashboard.php");
 exit();
+
+
+
+function addUserToGuild($discord_ID,$token,$guild_ID){
+    $payload = [
+        'access_token'=>$token,
+    ];
+
+    $discord_api_url = 'https://discordapp.com/api/guilds/'.$guild_ID.'/members/'.$discord_ID;
+
+    $bot_token = "MTE3MTM5MzM3ODU3MTgwMDU4Ng.GtpWQp.Ai8DwiX06h0IRJZ77kpDzoecRkeN1laZ-_VS40";
+    $header = array("Authorization: Bot $bot_token", "Content-Type: application/json");
+
+    $ch = curl_init();
+    //set the url, number of POST vars, POST data
+    curl_setopt($ch, CURLOPT_HTTPHEADER,$header);
+    curl_setopt($ch,CURLOPT_URL, $discord_api_url);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "PUT"); //must be put for this method..
+    curl_setopt($ch,CURLOPT_POSTFIELDS, json_encode($payload)); //must be a json body
+    curl_setopt($ch,CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+
+    $result = curl_exec($ch);
+    
+    if(!$result){
+        echo curl_error($ch);
+    }else{
+        return true;
+    }
+}
+
+function getUsersGuilds($auth_token){
+    //url scheme /users/@me/guilds
+    $discord_api_url = "https://discordapp.com/api";
+    $header = array("Authorization: Bearer $auth_token","Content-Type: application/x-www-form-urlencoded");
+    $ch = curl_init();
+    //set the url, number of POST vars, POST data
+    curl_setopt($ch, CURLOPT_HTTPHEADER,$header);
+    curl_setopt($ch,CURLOPT_URL, $discord_api_url.'/users/@me/guilds');
+    curl_setopt($ch,CURLOPT_POST, false);
+    //curl_setopt($ch,CURLOPT_POSTFIELDS, $fields_string);
+    curl_setopt($ch,CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+    $result = curl_exec($ch);
+    $result = json_decode($result,true);
+    return $result;
+}
